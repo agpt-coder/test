@@ -1,0 +1,133 @@
+// datasource db defines the database connection settings.
+// It is configured for PostgreSQL and uses an environment variable for the connection URL.
+// The 'extensions' feature enables the use of PostgreSQL-specific data types.
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// generator db configures Prisma Client settings.
+// It is set up to use Prisma Client Python with asyncio interface and specific features.
+generator db {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+  previewFeatures      = ["postgresqlExtensions"]
+}
+
+model User {
+  id            String         @id @default(dbgenerated("gen_random_uuid()"))
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  role          UserRole       @default(USER)
+  EchoRequests  EchoRequest[]
+  ApiKeys       ApiKey[]
+  Subscriptions Subscription[]
+  Log           Log[]
+  Payment       Payment[]
+}
+
+model EchoRequest {
+  id           String      @id @default(dbgenerated("gen_random_uuid()"))
+  text         String
+  response     String
+  createdAt    DateTime    @default(now())
+  userId       String
+  User         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Content      Content[]
+  APIVersion   APIVersion? @relation(fields: [aPIVersionId], references: [id])
+  aPIVersionId String?
+}
+
+model ApiKey {
+  id          String   @id @default(dbgenerated("gen_random_uuid()"))
+  key         String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  service     String
+  description String?
+  userId      String
+  User        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id               String             @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  subscriptionType SubscriptionType
+  status           SubscriptionStatus
+  userId           String
+  User             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Log {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime @default(now())
+  userId    String?
+  message   String
+  level     LogLevel
+  User      User?    @relation(fields: [userId], references: [id])
+}
+
+model Content {
+  id            String      @id @default(dbgenerated("gen_random_uuid()"))
+  contentType   ContentType
+  content       String
+  createdAt     DateTime    @default(now())
+  EchoRequest   EchoRequest @relation(fields: [echoRequestId], references: [id])
+  echoRequestId String
+}
+
+model APIVersion {
+  id           String        @id @default(dbgenerated("gen_random_uuid()"))
+  version      String        @unique
+  createdAt    DateTime      @default(now())
+  deprecated   Boolean       @default(false)
+  EchoRequests EchoRequest[]
+}
+
+model Payment {
+  id        String        @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime      @default(now())
+  amount    Int
+  currency  String
+  userId    String
+  User      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    PaymentStatus
+}
+
+enum UserRole {
+  USER
+  SUBSCRIBER
+  ADMIN
+}
+
+enum SubscriptionType {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum ContentType {
+  JSON
+  PLAIN_TEXT
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
